@@ -25,13 +25,43 @@ public class Polaroid : MonoBehaviour
     }
 
     private void Update() {
-        if (Input.GetKeyDown(KeyCode.Space))
-        {
-            if (!snapShotSaved)
-                Snapshot();
-            else
-                Place();
-        }
+		if (Input.GetKeyDown(KeyCode.Space))
+		{
+			if (picture.activeSelf)
+			{
+				if (!snapShotSaved)
+				{
+					Snapshot();
+				}
+				else
+				{
+					Place();
+				}
+			}
+			else
+				picture.SetActive(true);
+		}
+    }
+
+	private void Place()
+    {
+		picture.SetActive(false);
+		snapShotSaved = false;
+
+		foreach (GameObject obj in toBePlaced)
+		{
+			print (obj.ToString());
+			obj.SetActive(true);
+			Vector3 difference = new Vector3(
+				picture.transform.position.x - obj.transform.position.x,
+				picture.transform.position.y - obj.transform.position.y,
+				picture.transform.position.z - obj.transform.position.z);
+			obj.transform.position = picture.transform.forward + new Vector3(0,0,3);
+			//obj.transform.position = picture.transform.position + difference;
+		}
+
+		toBePlaced.Clear();
+		pictureMaterial.SetTexture("_UnlitColorMap", pictureRenderTexture);
     }
 
     private void Snapshot()
@@ -222,8 +252,9 @@ public class Polaroid : MonoBehaviour
 		return planes.All(plane => plane.GetSide(point));
 	}
 
-    private void Place()
-    {
-
-    }
+	private void OnDrawGizmos() {
+		Gizmos.color = Color.blue;
+		Vector3 look = this.transform.TransformDirection(Vector3.forward);
+		Gizmos.DrawLine(this.transform.position, look);
+	}
 }
