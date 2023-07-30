@@ -18,6 +18,9 @@ public class Polaroid : MonoBehaviour
     private List<GameObject> toBePlaced = new List<GameObject>();
     private Texture2D snappedPictureTexture;
 
+	private Vector3 lookDirection;
+	private float distance;
+
     private void Start() {
         parentCamera = transform.parent;
         snappedPictureTexture = new Texture2D(pictureRenderTexture.width, pictureRenderTexture.height, pictureRenderTexture.graphicsFormat, TextureCreationFlags.None);
@@ -50,14 +53,29 @@ public class Polaroid : MonoBehaviour
 
 		foreach (GameObject obj in toBePlaced)
 		{
-			print (obj.ToString());
 			obj.SetActive(true);
 			Vector3 difference = new Vector3(
 				picture.transform.position.x - obj.transform.position.x,
 				picture.transform.position.y - obj.transform.position.y,
 				picture.transform.position.z - obj.transform.position.z);
-			obj.transform.position = picture.transform.forward + new Vector3(0,0,3);
-			//obj.transform.position = picture.transform.position + difference;
+
+			Vector3 direction = new Vector3(
+				obj.transform.position.x - cameraPolaroid.transform.position.x,
+				obj.transform.position.y - cameraPolaroid.transform.position.y,
+				obj.transform.position.z - cameraPolaroid.transform.position.z
+			);
+			
+			Vector3 look = cameraPolaroid.transform.TransformDirection(Vector3.forward);
+			look = Quaternion.Euler(lookDirection) * look;
+			//look.x *= direction.x;
+			//look.y *= direction.y;
+			//look.z *= direction.z;
+
+			//transform.position = transform.position + Camera.main.transform.forward * distance * Time.deltaTime;
+
+
+			obj.transform.position += cameraPolaroid.transform.position + look * distance; // + difference;
+
 		}
 
 		toBePlaced.Clear();
@@ -88,6 +106,19 @@ public class Polaroid : MonoBehaviour
         snapShotSaved = true;
         Graphics.CopyTexture(pictureRenderTexture, snappedPictureTexture);
         pictureMaterial.SetTexture("_UnlitColorMap", snappedPictureTexture);
+
+		Vector3 look = cameraPolaroid.transform.TransformDirection(Vector3.forward);
+
+		Vector3 direction = new Vector3(
+			toBePlaced[0].transform.position.x - cameraPolaroid.transform.position.x,
+			toBePlaced[0].transform.position.y - cameraPolaroid.transform.position.y,
+			toBePlaced[0].transform.position.z - cameraPolaroid.transform.position.z
+		);
+
+		direction = toBePlaced[0].transform.position - cameraPolaroid.transform.position;
+		//Debug.Log(Vector3.SignedAngle(look, direction, Vector3.left) + " - " + Vector3.SignedAngle(look, direction, Vector3.up));
+		lookDirection = Quaternion.FromToRotation(look, direction).eulerAngles;
+		distance = Vector3.Distance(cameraPolaroid.transform.position, toBePlaced[0].transform.position);
     }
 
     private List<int> GetTrianglesInsideViewFrustrum(Transform gameObjectTransform, ref List<Vector3> meshVertices, ref List<int> matchingVertices, in int[] meshTriangles, in Plane[] planes)
@@ -252,9 +283,11 @@ public class Polaroid : MonoBehaviour
 		return planes.All(plane => plane.GetSide(point));
 	}
 
+	/*
 	private void OnDrawGizmos() {
 		Gizmos.color = Color.blue;
-		Vector3 look = this.transform.TransformDirection(Vector3.forward);
-		Gizmos.DrawLine(this.transform.position, look);
+		Vector3 look = cameraPolaroid.transform.TransformDirection(Vector3.forward);
+		Gizmos.DrawLine(cameraPolaroid.transform.position, cameraPolaroid.transform.position + (look * 2));
 	}
+	*/
 }
