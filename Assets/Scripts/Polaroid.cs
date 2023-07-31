@@ -34,7 +34,8 @@ public class Polaroid : MonoBehaviour
 			{
 				if (!snapShotSaved)
 				{
-					Snapshot();
+					if (toBePlaced.Count == 0)
+						Snapshot();
 				}
 				else
 				{
@@ -43,6 +44,21 @@ public class Polaroid : MonoBehaviour
 			}
 			else
 				picture.SetActive(true);
+		}
+
+
+		if (toBePlaced.Count > 0)
+		{
+			LineRenderer lr = cameraPolaroid.GetComponent<LineRenderer>();
+			Vector3 look = Quaternion.Euler(lookDirection) * cameraPolaroid.transform.TransformDirection(Vector3.forward);
+			lr.startColor = Color.blue;
+			lr.endColor = Color.red;
+
+			// set width of the renderer
+			lr.startWidth = 0.02f;
+			lr.endWidth = 0.02f;
+			lr.SetPosition(0, cameraPolaroid.transform.position);
+        	lr.SetPosition(1, cameraPolaroid.transform.position + (look * distance));
 		}
     }
 
@@ -65,16 +81,12 @@ public class Polaroid : MonoBehaviour
 				obj.transform.position.z - cameraPolaroid.transform.position.z
 			);
 			
-			Vector3 look = cameraPolaroid.transform.TransformDirection(Vector3.forward);
-			look = Quaternion.Euler(lookDirection) * look;
-			//look.x *= direction.x;
-			//look.y *= direction.y;
-			//look.z *= direction.z;
+			Vector3 look = Quaternion.Euler(lookDirection) * cameraPolaroid.transform.TransformDirection(Vector3.forward);
 
 			//transform.position = transform.position + Camera.main.transform.forward * distance * Time.deltaTime;
 
 
-			obj.transform.position += cameraPolaroid.transform.position + look * distance; // + difference;
+			obj.transform.position = cameraPolaroid.transform.position + (look * distance); // + difference;
 
 		}
 
@@ -116,9 +128,11 @@ public class Polaroid : MonoBehaviour
 		);
 
 		direction = toBePlaced[0].transform.position - cameraPolaroid.transform.position;
-		//Debug.Log(Vector3.SignedAngle(look, direction, Vector3.left) + " - " + Vector3.SignedAngle(look, direction, Vector3.up));
+
 		lookDirection = Quaternion.FromToRotation(look, direction).eulerAngles;
 		distance = Vector3.Distance(cameraPolaroid.transform.position, toBePlaced[0].transform.position);
+
+		Debug.Log(lookDirection);
     }
 
     private List<int> GetTrianglesInsideViewFrustrum(Transform gameObjectTransform, ref List<Vector3> meshVertices, ref List<int> matchingVertices, in int[] meshTriangles, in Plane[] planes)
@@ -254,7 +268,6 @@ public class Polaroid : MonoBehaviour
 		newMesh.RecalculateNormals();
 		
 		toBePlaced.Add(newObject);
-		Debug.Log(toBePlaced.Count);
 	}
 
     private int[] GetClockwiseRotation(int[] index, int[] triangles)
@@ -283,11 +296,9 @@ public class Polaroid : MonoBehaviour
 		return planes.All(plane => plane.GetSide(point));
 	}
 
-	/*
 	private void OnDrawGizmos() {
 		Gizmos.color = Color.blue;
 		Vector3 look = cameraPolaroid.transform.TransformDirection(Vector3.forward);
 		Gizmos.DrawLine(cameraPolaroid.transform.position, cameraPolaroid.transform.position + (look * 2));
 	}
-	*/
 }
