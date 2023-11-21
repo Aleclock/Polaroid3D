@@ -10,6 +10,7 @@ using ViewFinder.Gameplay;
 
 public class Polaroid : MonoBehaviour
 {
+	[SerializeField] private InputReader inputReader;
     [SerializeField] private Vector3 offsetFromParent;
     [FormerlySerializedAs("renderTexture")] public RenderTexture pictureRenderTexture;
     [SerializeField] private Camera cameraPolaroid;
@@ -28,12 +29,31 @@ public class Polaroid : MonoBehaviour
 	private Texture PictureTexture;
 	private GameObject PhotoOutputParent;
 
-    private void Start() {
+    private void Awake() {
+
+		inputReader.TriggerLeftHandActivateEvent += TriggerClicked;
+
 		planes = new Plane[6];
         parentCamera = transform.parent;
         snappedPictureTexture = new Texture2D(pictureRenderTexture.width, pictureRenderTexture.height, pictureRenderTexture.graphicsFormat, TextureCreationFlags.None);
         pictureMaterial = picture.GetComponent<Renderer>().material;
     }
+
+	private void TriggerClicked()
+	{
+		if (picture.activeSelf)
+		{
+			if (!snapShotSaved)
+			{
+				//if (toBePlaced.Count == 0)
+				Snapshot();
+			}
+			else
+			{
+				Place();
+			}
+		}
+	}
 
     private void Update() {
 		if (Input.GetKeyDown(KeyCode.Return))
