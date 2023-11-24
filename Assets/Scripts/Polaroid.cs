@@ -24,6 +24,8 @@ public class Polaroid : MonoBehaviour
 	private Vector3 lookDirection;
 	private float distance;
 
+	public LayerMask cameraPlanesLayerMask;
+    private List<GameObject> cameraPlanes = new List<GameObject>();
 	private Plane[] planes;
 	private List<Slicerable> projections;
 	private Texture PictureTexture;
@@ -37,6 +39,8 @@ public class Polaroid : MonoBehaviour
         parentCamera = transform.parent;
         snappedPictureTexture = new Texture2D(pictureRenderTexture.width, pictureRenderTexture.height, pictureRenderTexture.graphicsFormat, TextureCreationFlags.None);
         pictureMaterial = picture.GetComponent<Renderer>().material;
+
+		CreateCameraPlanes();
     }
 
 	private void TriggerClicked()
@@ -98,9 +102,38 @@ public class Polaroid : MonoBehaviour
 		return tex;
 	}
 
-	private void Snapshot()
+	// https://github.com/neogeek/Unity-Snippets/blob/master/GeometryUtility/CalculateFrustumPlanes.md
+	private void CreateCameraPlanes()
 	{
 		GeometryUtility.CalculateFrustumPlanes(cameraPolaroid, planes);
+
+        GameObject cameraPlanesWrapper = new GameObject("Camera Planes");
+
+        for (int i = 0; i < planes.Length; i += 1) {
+
+            GameObject plane = GameObject.CreatePrimitive(PrimitiveType.Plane);
+
+            plane.name = string.Format("Plane {0}", i.ToString());
+            plane.layer = (int) Mathf.Log(cameraPlanesLayerMask.value, 2);
+            plane.transform.parent = cameraPlanesWrapper.transform;
+
+            plane.GetComponent<Renderer>().enabled = false;
+
+            cameraPlanes.Add(plane);
+
+        }
+
+		for (int i = 0; i < planes.Length; i += 1) {
+
+            cameraPlanes[i].transform.position = -planes[i].normal * planes[i].distance;
+            cameraPlanes[i].transform.rotation = Quaternion.FromToRotation(Vector3.up, planes[i].normal);
+
+        }
+	}
+
+	private void Snapshot()
+	{
+		//GeometryUtility.CalculateFrustumPlanes(cameraPolaroid, planes);
 		projections = new List<Slicerable>();
 
 		snapShotSaved = true;
