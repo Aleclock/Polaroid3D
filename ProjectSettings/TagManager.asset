@@ -4,8 +4,7 @@
 TagManager:
   serializedVersion: 2
   tags:
-  - StaticObject
-  - DynamicObject
+  - SnapShotObjects
   layers:
   - Default
   - TransparentFX

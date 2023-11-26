@@ -6,7 +6,7 @@ using UnityEngine;
 using UnityEngine.Serialization;
 using UnityEngine.Experimental.Rendering;
 using System.IO;
-using ViewFinder.Gameplay;
+using EzySlice;
 
 public class Polaroid : MonoBehaviour
 {
@@ -21,26 +21,27 @@ public class Polaroid : MonoBehaviour
     private List<GameObject> toBePlaced = new List<GameObject>();
     private Texture2D snappedPictureTexture;
 
-	private Vector3 lookDirection;
-	private float distance;
 
 	public LayerMask cameraPlanesLayerMask;
+	public Material fillMaterial;
     private List<GameObject> cameraPlanes = new List<GameObject>();
-	private Plane[] planes;
-	private List<Slicerable> projections;
+	private UnityEngine.Plane[] planes;
 	private Texture PictureTexture;
 	private GameObject PhotoOutputParent;
+	private GameObject[] objsToSnapshot; 
 
     private void Awake() {
 
 		inputReader.TriggerLeftHandActivateEvent += TriggerClicked;
 
-		planes = new Plane[6];
+		planes = new UnityEngine.Plane[6]; // TODO forse non serve
         parentCamera = transform.parent;
         snappedPictureTexture = new Texture2D(pictureRenderTexture.width, pictureRenderTexture.height, pictureRenderTexture.graphicsFormat, TextureCreationFlags.None);
         pictureMaterial = picture.GetComponent<Renderer>().material;
 
-		CreateCameraPlanes();
+		//CreateCameraPlanes();
+
+		objsToSnapshot = GameObject.FindGameObjectsWithTag("SnapShotObjects");
     }
 
 	private void TriggerClicked()
@@ -49,8 +50,7 @@ public class Polaroid : MonoBehaviour
 		{
 			if (!snapShotSaved)
 			{
-				//if (toBePlaced.Count == 0)
-				Snapshot();
+				TakeSnapshot();
 			}
 			else
 			{
@@ -72,7 +72,7 @@ public class Polaroid : MonoBehaviour
 				if (!snapShotSaved)
 				{
 					if (toBePlaced.Count == 0)
-						Snapshot();
+						TakeSnapshot();
 				}
 				else
 				{
@@ -106,11 +106,10 @@ public class Polaroid : MonoBehaviour
 	private void CreateCameraPlanes()
 	{
 		GeometryUtility.CalculateFrustumPlanes(cameraPolaroid, planes);
-
         GameObject cameraPlanesWrapper = new GameObject("Camera Planes");
 
-        for (int i = 0; i < planes.Length; i += 1) {
-
+        for (int i = 0; i < planes.Length; i += 1) 
+		{
             GameObject plane = GameObject.CreatePrimitive(PrimitiveType.Plane);
 
             plane.name = string.Format("Plane {0}", i.ToString());
@@ -120,68 +119,133 @@ public class Polaroid : MonoBehaviour
             plane.GetComponent<Renderer>().enabled = false;
 
             cameraPlanes.Add(plane);
-
         }
 
-		for (int i = 0; i < planes.Length; i += 1) {
-
+		for (int i = 0; i < planes.Length; i += 1) 
+		{
             cameraPlanes[i].transform.position = -planes[i].normal * planes[i].distance;
             cameraPlanes[i].transform.rotation = Quaternion.FromToRotation(Vector3.up, planes[i].normal);
-
         }
 	}
 
-	private void Snapshot()
+	private void TakeSnapshot()
 	{
-		//GeometryUtility.CalculateFrustumPlanes(cameraPolaroid, planes);
-		projections = new List<Slicerable>();
-
+		CreateCameraPlanes(); // TODO forse posso farlo una volta all'inizio e poi metterlo come figlio della camera
 		snapShotSaved = true;
-		Slicerable[] Projections = FindObjectsOfType<Slicerable>().Where(p => p.isActiveAndEnabled).ToArray();
+
 		Texture2D snappedPictureTexture = toTexture2D(pictureRenderTexture);
 		pictureMaterial.mainTexture = snappedPictureTexture;
 
-		foreach (var projection in Projections)
+		List<GameObject> goInFrustum = new List<GameObject>();
+		
+		foreach (GameObject go in objsToSnapshot)
 		{
-			if (!projection.gameObject.activeInHierarchy)
+			if (!go.activeInHierarchy)
 				continue;
-			projection.TryGetComponent<Renderer>(out var renderer);
+
+			go.TryGetComponent<Renderer>(out var renderer);
 			if (!renderer)
 				continue;
-			
+
 			var bounds = renderer.bounds;
 
 			if (GeometryUtility.TestPlanesAABB(planes, bounds))
-				projections.Add(projection);
+				goInFrustum.Add(go);
+		}
+		
+		/*
+		UnityEngine.Plane[] planesFlipped = getPlanesFlipped(planes);
+		var planesPP = GeometryUtility.CalculateFrustumPlanes(cameraPolaroid);
+		for (int i=0; i < planesPP.Length; i++)
+		{
+			planesPP[i].Flip();
 		}
 
-		gameObject.SetActive(true); // TODO forse togliere
+		foreach (GameObject gg in objsToSnapshot)
+		{
+			gg.TryGetComponent<Renderer>(out var rendererOut);
+			if (!rendererOut)
+				continue;
 
-		CopyObjects();
+			var bb = rendererOut.bounds;
 
+			if (GeometryUtility.TestPlanesAABB(planesPP, bb))
+				print(gg.name);
+		}
+		*/
+		SliceObjects(goInFrustum);
 	}
 
-	private void CopyObjects()
+	private UnityEngine.Plane[] getPlanesFlipped(UnityEngine.Plane[] planes)
+	{
+		List<UnityEngine.Plane> flippedPlanes = new List<UnityEngine.Plane>();
+		foreach (UnityEngine.Plane p in planes)
+		{
+			flippedPlanes.Add(p.flipped);
+		}
+
+		return flippedPlanes.ToArray();
+	}
+
+	private void SliceObjects(List<GameObject> gameObjects)
 	{
 		PhotoOutputParent = new GameObject("Photo Output");
 		PhotoOutputParent.transform.position = cameraPolaroid.transform.position;
 		PhotoOutputParent.transform.rotation = cameraPolaroid.transform.rotation;
 
-		foreach (var original in projections)
+		foreach (GameObject original in gameObjects)
 		{
-			var copy = Instantiate(original, PhotoOutputParent.transform, true);
-			var renderCopy = copy.GetComponent<Renderer>();
-			var renderOriginal = original.GetComponent<Renderer>();
-			copy.SetAsCopy();
+			GameObject copy = original; // TODO set tag SnapShotObjects
+			copy.tag = "SnapShotObjects";
+			GameObject temporary;
+			Mesh meshCopy = new Mesh();
 
-			renderCopy.lightmapIndex = renderOriginal.lightmapIndex;
-			renderCopy.lightmapScaleOffset = renderOriginal.lightmapScaleOffset;
-			MeshUtils.CutByPlanes(copy, planes);
+			foreach (GameObject plane in cameraPlanes)
+			{
+				SlicedHull hull = copy.Slice(plane.transform.position, plane.transform.up); 
+				
+				if (hull != null)
+				{
+					meshCopy = hull.upperHull;
+					temporary = hull.CreateUpperHull(copy, fillMaterial);
+					copy = temporary;
+					Destroy(temporary);
+				}
+			}
+			/*
+			GameObject gg = new GameObject("miao");
+			gg.AddComponent<MeshFilter>();
+			gg.AddComponent<MeshRenderer>();
+			gg.GetComponent<MeshFilter>().mesh = copy.GetComponent<MeshFilter>().mesh;
+			*/
+			AddOriginalComponents(original, copy);
+			Instantiate(copy, PhotoOutputParent.transform, true);
 
-			if (copy.GetComponent<MeshFilter>()?.mesh.vertices.Length == 0)
-				Destroy(copy);
+			// TODO add copy to objsToSnapshot 
 		}
-
 		PhotoOutputParent.SetActive(false);
+	}
+
+	// https://discussions.unity.com/t/copy-a-component-at-runtime/71172/3
+	private void AddOriginalComponents(GameObject original, GameObject destination)
+	{
+		List<string> typesToIgnore = new List<string>{"Transform", "MeshRenderer", "BoxCollider", "MeshFilter"};
+		Component[] components = original.GetComponents(typeof(Component));
+		foreach (Component c in components)
+		{
+			System.Type type = c.GetType();
+			if (typesToIgnore.Contains(type.Name))
+				continue;
+
+			Debug.Log(type.Name);
+
+			Component copy = destination.AddComponent(type);
+			// Copied fields can be restricted with BindingFlags
+			System.Reflection.FieldInfo[] fields = type.GetFields(); 
+			foreach (System.Reflection.FieldInfo field in fields)
+			{
+				field.SetValue(copy, field.GetValue(original));
+			}
+		}
 	}
 }

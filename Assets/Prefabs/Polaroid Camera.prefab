@@ -122,7 +122,7 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 6522764895607059979}
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -150,6 +150,9 @@ MonoBehaviour:
   pictureRenderTexture: {fileID: 8400000, guid: 24bec751208c4484d9460c3407dd771c, type: 2}
   cameraPolaroid: {fileID: 6522764896681822495}
   picture: {fileID: 6522764896428986390}
+  cameraPlanesLayerMask:
+    serializedVersion: 2
+    m_Bits: 1
 --- !u!114 &6522764895607059980
 MonoBehaviour:
   m_ObjectHideFlags: 0
